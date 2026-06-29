@@ -1,0 +1,40 @@
+[project]
+name = "internal-requests-desk-backend"
+version = "0.1.0"
+description = "FastAPI backend for a small internal request tracking app."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0,<1.0.0",
+    "pydantic-settings>=2.4.0,<3.0.0",
+    "PyJWT>=2.8.0,<3.0.0",
+    "sqlmodel>=0.0.22,<0.1.0",
+    "uvicorn[standard]>=0.30.0,<1.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27.0,<1.0.0",
+    "pytest>=8.2.0,<9.0.0",
+    "ruff>=0.5.0,<1.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.format]
+quote-style = "double"
