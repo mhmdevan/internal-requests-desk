@@ -1,108 +1,163 @@
 # Internal Requests Desk
 
-A small internal ticket/request tracker built as a production-quality test assignment. It keeps the architecture explicit and easy to review without turning the project into an enterprise framework demo.
+[![CI](https://github.com/mhmdevan/internal-requests-desk/actions/workflows/ci.yml/badge.svg)](https://github.com/mhmdevan/internal-requests-desk/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)
+![React](https://img.shields.io/badge/React-18-61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![Tests](https://img.shields.io/badge/tests-pytest%20%2B%20vitest-brightgreen)
 
-## Tech stack
+A small full-stack internal request tracking app built as a test assignment with FastAPI, React, TypeScript, SQLite, and clean backend-side filtering, sorting, and pagination.
 
-- Backend: Python 3.12+, FastAPI, SQLModel, SQLite, Pydantic, PyJWT
-- Backend tests/tooling: pytest, httpx, Ruff
-- Frontend: React, TypeScript, Vite
-- Frontend state/forms/tests: TanStack Query, React Hook Form, Zod, Vitest, React Testing Library
-- Styling: plain CSS
-- Optional local orchestration: Docker Compose
+## ✨ Overview
 
-## Architecture overview
+Internal Requests Desk lets a team track lightweight internal requests from creation to completion. Users can:
+
+- Create internal requests/tickets.
+- List requests in a paginated table.
+- Search by title and description.
+- Filter by status and priority.
+- Sort by created date or priority.
+- Change request status.
+- Log in as the default admin.
+- Delete non-completed tickets as admin.
+- Rely on backend-enforced business rules and clear HTTP errors.
+
+## 🧰 Tech Stack
+
+| Area                     | Technologies                                                                                 |
+| ------------------------ | -------------------------------------------------------------------------------------------- |
+| Backend                  | Python 3.12, FastAPI, SQLModel, SQLite, PyJWT, pytest, httpx, Ruff                           |
+| Frontend                 | React, TypeScript, Vite, TanStack Query, React Hook Form, Zod, Vitest, React Testing Library |
+| Infrastructure / tooling | Docker Compose, GitHub Actions, ESLint, Prettier                                             |
+
+## 🏗️ Architecture
 
 ```text
-backend/
-  app/
-    core/       config, JWT helpers, app errors
-    db/         SQLModel engine/session and table creation
-    auth/       login schemas, service, router
-    tickets/    table model, API schemas, repository, service, router
-  tests/        isolated SQLite API tests
-
-frontend/
-  src/
-    app/        root app and React Query provider
-    shared/     API helper and small reusable UI controls
-    features/
-      auth/     admin login and token storage
-      tickets/  ticket API, hooks, forms, filters, table, pagination
+internal-requests-desk/
+├── backend/
+│   ├── app/
+│   └── tests/
+├── frontend/
+│   └── src/
+├── docker-compose.yml
+└── .github/workflows/ci.yml
 ```
 
-Backend route handlers stay thin. Ticket business rules live in the service layer, and database querying lives in the repository layer. The frontend sends search, filters, sorting, and pagination to the backend instead of doing list operations locally.
+### Backend
 
-## Business rules
+- Routers are intentionally thin.
+- The service layer owns business rules.
+- The repository layer owns database querying.
+- API schemas are separated from persistence models.
+- FastAPI dependency injection is used for DB sessions and admin auth.
+- Search, filtering, sorting, and pagination are performed by the backend.
+
+### Frontend
+
+- Feature-based structure keeps auth and tickets isolated.
+- TanStack Query owns server state and cache invalidation.
+- React Hook Form + Zod handle ticket form validation.
+- API and business-rule errors are surfaced clearly to the user.
+- Search, filters, sorting, and pagination are sent to the API instead of being applied client-side.
+
+## 📌 Business Rules
 
 - Default admin credentials are `admin` / `admin`.
 - Admin authentication is required only for deleting tickets.
-- Done tickets cannot be edited or deleted.
-- A ticket cannot move from `done` back to another status.
-- Business-rule violations return clear `409 Conflict` responses.
-- Missing or invalid authentication returns `401`; non-admin tokens return `403`.
+- New tickets always start with status `new`.
+- Tickets with status `done` cannot be edited.
+- Tickets with status `done` cannot be deleted.
+- Tickets cannot be moved from `done` back to another status.
+- The backend returns meaningful HTTP errors for invalid requests, missing auth, not-found records, and business-rule conflicts.
 
-## Backend setup
+## 🔌 API Summary
+
+| Method   | Endpoint                   | Description                                      |
+| -------- | -------------------------- | ------------------------------------------------ |
+| `POST`   | `/api/auth/login`          | Login as admin                                   |
+| `GET`    | `/api/auth/me`             | Get current admin                                |
+| `POST`   | `/api/tickets`             | Create ticket                                    |
+| `GET`    | `/api/tickets`             | List, search, filter, sort, and paginate tickets |
+| `PATCH`  | `/api/tickets/{id}/status` | Change ticket status                             |
+| `DELETE` | `/api/tickets/{id}`        | Delete ticket as admin                           |
+
+## 🚀 Getting Started
+
+### Backend
 
 ```bash
 cd backend
-python -m pip install -e ".[dev]"
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 uvicorn app.main:app --reload
 ```
 
-Backend API: `http://127.0.0.1:8000`
+Backend URL: [http://localhost:8000](http://localhost:8000)
 
-Backend quality gates:
+API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-```bash
-cd backend
-pytest
-ruff check .
-ruff format .
-```
-
-## Frontend setup
+### Frontend
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Frontend app: `http://127.0.0.1:5173`
+Frontend URL: [http://localhost:5173](http://localhost:5173)
 
-Frontend quality gates:
-
-```bash
-cd frontend
-npm test
-npm run build
-npm run lint
-```
-
-The frontend defaults to `http://127.0.0.1:8000/api`. Override it with `VITE_API_BASE_URL` if needed.
-
-## Docker Compose
+## 🐳 Docker Compose
 
 ```bash
 docker compose up --build
 ```
 
-Then open `http://127.0.0.1:5173`.
+Docker Compose is provided as a local review environment for the assignment, not as a production deployment setup. The frontend container runs the Vite dev server so reviewers can quickly open the app at [http://localhost:5173](http://localhost:5173).
 
-## API summary
+## ✅ Running Tests
 
-- `POST /api/auth/login` - returns a JWT for `admin` / `admin`
-- `GET /api/auth/me` - returns the current admin user for a valid token
-- `POST /api/tickets` - creates a ticket
-- `GET /api/tickets` - paginated list with `q`, `status`, `priority`, `sort_by`, `sort_order`, `page`, and `page_size`
-- `PATCH /api/tickets/{ticket_id}/status` - changes ticket status
-- `DELETE /api/tickets/{ticket_id}` - deletes a non-done ticket with admin auth
+### Backend
 
-## Intentional simplifications
+```bash
+cd backend
+pytest
+ruff check .
+ruff format --check .
+```
 
-- No registration or roles beyond the default admin.
-- JWT secret and SQLite are simple local defaults suitable for a test assignment.
-- Admin token is stored in `localStorage` to keep the review flow straightforward.
-- Styling is plain CSS with a compact, work-focused UI.
-- No WebSockets, Redux, background workers, or microservices.
+### Frontend
+
+```bash
+cd frontend
+npm run lint
+npm test -- --run
+npm run build
+```
+
+## 🔐 Admin Credentials
+
+```text
+Username: admin
+Password: admin
+```
+
+Authentication is intentionally simple for the assignment. There is no registration and no role model beyond the default admin.
+
+## 📝 Implementation Notes
+
+- Authentication is intentionally minimal and based on a simple JWT issued to the default admin.
+- SQLite is used because it matches the assignment requirements and keeps local setup fast.
+- Backend-side filtering, search, sorting, and pagination are implemented to avoid frontend-only data manipulation.
+- The UI is intentionally simple and readable because visual design is not the evaluation focus.
+- The project avoids unnecessary enterprise complexity such as microservices, Redux, WebSockets, registration, or role management.
+
+## 🎯 What Was Prioritized
+
+- Correctness.
+- Readable architecture.
+- Meaningful tests.
+- Backend-enforced business rules.
+- Reviewer-friendly setup.
+- Simple local execution.

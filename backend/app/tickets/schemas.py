@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from pydantic import computed_field, field_serializer
+from pydantic import ConfigDict, computed_field, field_serializer
 from sqlmodel import Field, SQLModel
 
 from app.tickets.models import TicketPriority, TicketStatus
@@ -18,9 +18,10 @@ class SortOrder(StrEnum):
 
 
 class TicketCreate(SQLModel):
+    model_config = ConfigDict(extra="ignore")
+
     title: str = Field(min_length=3, max_length=120)
     description: str | None = Field(default=None, max_length=1000)
-    status: TicketStatus = TicketStatus.new
     priority: TicketPriority = TicketPriority.normal
 
 

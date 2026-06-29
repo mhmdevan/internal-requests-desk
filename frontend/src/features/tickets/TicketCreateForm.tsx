@@ -25,7 +25,6 @@ export function TicketCreateForm({ onCreate, isSubmitting, error }: TicketCreate
     defaultValues: {
       title: "",
       description: "",
-      status: "new",
       priority: "normal",
     },
   });
@@ -53,17 +52,6 @@ export function TicketCreateForm({ onCreate, isSubmitting, error }: TicketCreate
           ) : null}
         </label>
         <div className="form-row">
-          <Select
-            id="initial-status"
-            label="Initial status"
-            {...register("status")}
-            error={errors.status?.message}
-            options={[
-              { label: "New", value: "new" },
-              { label: "In progress", value: "in_progress" },
-              { label: "Done", value: "done" },
-            ]}
-          />
           <Select
             id="ticket-priority"
             label="Initial priority"

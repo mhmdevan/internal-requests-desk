@@ -13,7 +13,6 @@ export const ticketCreateSchema = z.object({
       const trimmed = value.trim();
       return trimmed.length > 0 ? trimmed : undefined;
     }),
-  status: z.enum(["new", "in_progress", "done"]),
   priority: z.enum(["low", "normal", "high"]),
 });
 

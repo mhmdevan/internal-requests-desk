@@ -51,6 +51,16 @@ def test_create_valid_ticket(client: TestClient) -> None:
     assert body["updated_at"].endswith("+00:00")
 
 
+def test_create_always_starts_as_new(client: TestClient) -> None:
+    response = client.post(
+        "/api/tickets",
+        json={"title": "Close this later", "status": "done", "priority": "high"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "new"
+
+
 def test_create_rejects_short_title(client: TestClient) -> None:
     response = client.post("/api/tickets", json={"title": "No"})
 
