@@ -1,10 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as authApi from "../features/auth/api";
 import * as ticketApi from "../features/tickets/api";
 import { TOKEN_STORAGE_KEY } from "../shared/api/http";
+import { i18next, LANGUAGE_STORAGE_KEY } from "../shared/i18n";
 import { App } from "./App";
 
 vi.mock("../features/auth/api", () => ({
@@ -21,9 +22,10 @@ vi.mock("../features/tickets/api", () => ({
 const loginAdminMock = vi.mocked(authApi.loginAdmin);
 const fetchTicketsMock = vi.mocked(ticketApi.fetchTickets);
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
   window.localStorage.clear();
+  await i18next.changeLanguage("ru");
   fetchTicketsMock.mockResolvedValue({
     items: [],
     total: 0,
@@ -33,17 +35,54 @@ beforeEach(() => {
   });
 });
 
-it("stores the admin token after login", async () => {
-  const user = userEvent.setup();
-  loginAdminMock.mockResolvedValue({ access_token: "test-token", token_type: "bearer" });
+describe("App", () => {
+  it("renders the ticket dashboard without login", async () => {
+    render(<App />);
 
-  render(<App />);
-
-  await user.type(screen.getByLabelText("Password"), "admin");
-  await user.click(screen.getByRole("button", { name: "Log in" }));
-
-  await waitFor(() => {
-    expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBe("test-token");
+    expect(await screen.findByText("Панель заявок")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Вход администратора" })).toBeInTheDocument();
   });
-  expect(screen.getByText("Logged in as admin")).toBeInTheDocument();
+
+  it("opens admin login modal and stores the token after login", async () => {
+    const user = userEvent.setup();
+    loginAdminMock.mockResolvedValue({ access_token: "test-token", token_type: "bearer" });
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Вход администратора" }));
+    await user.type(await screen.findByLabelText("Пароль"), "admin");
+    await user.click(screen.getByRole("button", { name: "Войти" }));
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBe("test-token");
+    });
+    expect(screen.getByRole("button", { name: "Выйти" })).toBeInTheDocument();
+  });
+
+  it("renders the theme toggle", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(screen.getByTestId("theme-toggle"));
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem("internal_requests_theme")).toBe("dark");
+    });
+  });
+
+  it("renders Russian by default and switches to English", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(await screen.findByText("Учёт внутренних заявок")).toBeInTheDocument();
+    expect(screen.getByTestId("language-switcher")).toBeInTheDocument();
+
+    await user.click(screen.getByText("EN"));
+
+    expect(await screen.findByText("Internal request tracking")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Admin login" })).toBeInTheDocument();
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("en");
+  });
 });

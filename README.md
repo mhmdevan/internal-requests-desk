@@ -7,7 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 ![Tests](https://img.shields.io/badge/tests-pytest%20%2B%20vitest-brightgreen)
 
-A small full-stack internal request tracking app built as a test assignment with FastAPI, React, TypeScript, SQLite, and clean backend-side filtering, sorting, and pagination.
+A small full-stack internal request tracking app built as a test assignment with FastAPI, React, TypeScript, SQLite, a polished Mantine UI, and clean backend-side filtering, sorting, and pagination.
 
 ## ✨ Overview
 
@@ -21,15 +21,17 @@ Internal Requests Desk lets a team track lightweight internal requests from crea
 - Change request status.
 - Log in as the default admin.
 - Delete non-completed tickets as admin.
+- Switch between Russian and English.
+- Use a persisted light/dark theme.
 - Rely on backend-enforced business rules and clear HTTP errors.
 
 ## 🧰 Tech Stack
 
-| Area                     | Technologies                                                                                 |
-| ------------------------ | -------------------------------------------------------------------------------------------- |
-| Backend                  | Python 3.12, FastAPI, SQLModel, SQLite, PyJWT, pytest, httpx, Ruff                           |
-| Frontend                 | React, TypeScript, Vite, TanStack Query, React Hook Form, Zod, Vitest, React Testing Library |
-| Infrastructure / tooling | Docker Compose, GitHub Actions, ESLint, Prettier                                             |
+| Area                     | Technologies                                                                                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Backend                  | Python 3.12, FastAPI, SQLModel, SQLite, PyJWT, pytest, httpx, Ruff                                                |
+| Frontend                 | React, TypeScript, Vite, Mantine UI, TanStack Query, React Hook Form, Zod, i18next, Vitest, React Testing Library |
+| Infrastructure / tooling | Docker Compose, GitHub Actions, ESLint, Prettier                                                                  |
 
 ## 🏗️ Architecture
 
@@ -56,15 +58,17 @@ internal-requests-desk/
 ### Frontend
 
 - Feature-based structure keeps auth and tickets isolated.
+- Mantine provides the dashboard shell, cards, badges, modals, notifications, and theme foundation.
 - TanStack Query owns server state and cache invalidation.
 - React Hook Form + Zod handle ticket form validation.
 - API and business-rule errors are surfaced clearly to the user.
 - Search, filters, sorting, and pagination are sent to the API instead of being applied client-side.
+- Russian/English translations are centralized under `frontend/src/shared/i18n`.
 
 ## 📌 Business Rules
 
 - Default admin credentials are `admin` / `admin`.
-- Admin authentication is required only for deleting tickets.
+- Admin authentication is required only for deleting tickets. Anonymous users can still view, create, search, filter, sort, paginate, and change ticket status.
 - New tickets always start with status `new`.
 - Tickets with status `done` cannot be edited.
 - Tickets with status `done` cannot be deleted.
@@ -116,6 +120,13 @@ docker compose up --build
 
 Docker Compose is provided as a local review environment for the assignment, not as a production deployment setup. The frontend container runs the Vite dev server so reviewers can quickly open the app at [http://localhost:5173](http://localhost:5173).
 
+## 🌍 Localization
+
+- The frontend supports Russian and English.
+- Russian is the default language because the assignment and target role are Russian-speaking.
+- The selected language is stored in `localStorage`.
+- UI translations are intentionally lightweight and centralized instead of introducing a heavy localization workflow.
+
 ## ✅ Running Tests
 
 ### Backend
@@ -148,9 +159,11 @@ Authentication is intentionally simple for the assignment. There is no registrat
 ## 📝 Implementation Notes
 
 - Authentication is intentionally minimal and based on a simple JWT issued to the default admin.
+- The main dashboard is not behind authentication; admin login only enables delete actions.
 - SQLite is used because it matches the assignment requirements and keeps local setup fast.
 - Backend-side filtering, search, sorting, and pagination are implemented to avoid frontend-only data manipulation.
-- The UI is intentionally simple and readable because visual design is not the evaluation focus.
+- The UI uses Mantine for a more polished internal-operations feel while staying compact and reviewable.
+- Light/dark theme preference and selected language are persisted in `localStorage`.
 - The project avoids unnecessary enterprise complexity such as microservices, Redux, WebSockets, registration, or role management.
 
 ## 🎯 What Was Prioritized

@@ -1,9 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AppProviders } from "../../app/providers";
+import { i18next } from "../../shared/i18n";
 import * as ticketApi from "./api";
 import { TicketPage } from "./TicketPage";
 import { Ticket, TicketListResponse } from "./types";
@@ -42,7 +44,7 @@ function response(items: Ticket[] = []): TicketListResponse {
   };
 }
 
-function renderWithClient(children: ReactNode) {
+function renderWithProviders(children: ReactNode) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -50,15 +52,17 @@ function renderWithClient(children: ReactNode) {
     },
   });
 
-  return render(<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>);
+  return render(<AppProviders queryClient={queryClient}>{children}</AppProviders>);
 }
 
 function renderPage(isAdmin = false) {
-  return renderWithClient(<TicketPage isAdmin={isAdmin} />);
+  return renderWithProviders(<TicketPage isAdmin={isAdmin} />);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
+  window.localStorage.clear();
+  await i18next.changeLanguage("ru");
   fetchTicketsMock.mockResolvedValue(response());
 });
 
@@ -66,7 +70,7 @@ describe("TicketPage", () => {
   it("renders the empty state", async () => {
     renderPage();
 
-    expect(await screen.findByText("No tickets found.")).toBeInTheDocument();
+    expect(await screen.findByText("Заявки не найдены")).toBeInTheDocument();
   });
 
   it("renders the loading state", async () => {
@@ -79,9 +83,9 @@ describe("TicketPage", () => {
 
     renderPage();
 
-    expect(screen.getByRole("status")).toHaveTextContent("Loading tickets...");
+    expect(screen.getByRole("status", { name: "Загружаем заявки..." })).toBeInTheDocument();
     resolveRequest(response());
-    expect(await screen.findByText("No tickets found.")).toBeInTheDocument();
+    expect(await screen.findByText("Заявки не найдены")).toBeInTheDocument();
   });
 
   it("renders API errors", async () => {
@@ -96,9 +100,11 @@ describe("TicketPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: "Create ticket" }));
+    await user.click(screen.getByRole("button", { name: "Создать" }));
 
-    expect(await screen.findByText("Title must be at least 3 characters.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Название должно быть не короче 3 символов."),
+    ).toBeInTheDocument();
     expect(createTicketMock).not.toHaveBeenCalled();
   });
 
@@ -106,7 +112,7 @@ describe("TicketPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(screen.getByLabelText("Search tickets"), "vpn");
+    await user.type(screen.getByTestId("ticket-search"), "vpn");
 
     await waitFor(() => {
       expect(fetchTicketsMock).toHaveBeenLastCalledWith(
@@ -123,14 +129,31 @@ describe("TicketPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.selectOptions(screen.getByLabelText("Status"), "done");
-    await user.selectOptions(screen.getByLabelText("Priority"), "high");
+    await user.selectOptions(screen.getByTestId("status-filter"), "done");
+    await user.selectOptions(screen.getByTestId("priority-filter"), "high");
 
     await waitFor(() => {
       expect(fetchTicketsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           status: "done",
           priority: "high",
+        }),
+      );
+    });
+  });
+
+  it("calls the backend API with sort query params", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByTestId("sort-by"), "priority");
+    await user.selectOptions(screen.getByTestId("sort-order"), "asc");
+
+    await waitFor(() => {
+      expect(fetchTicketsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          sort_by: "priority",
+          sort_order: "asc",
         }),
       );
     });
@@ -144,7 +167,8 @@ describe("TicketPage", () => {
     renderPage();
 
     await screen.findByText("Reset VPN");
-    await user.selectOptions(screen.getByLabelText("Status for Reset VPN"), "in_progress");
+    await user.click(screen.getByTestId("status-menu-Reset VPN"));
+    await user.click(await screen.findByTestId("status-option-Reset VPN-in_progress"));
 
     expect(changeTicketStatusMock.mock.calls[0][0]).toEqual({
       ticketId: 1,
@@ -152,21 +176,39 @@ describe("TicketPage", () => {
     });
   });
 
-  it("does not show delete controls to non-admin users", async () => {
+  it("does not allow delete for non-admin users", async () => {
+    const user = userEvent.setup();
     fetchTicketsMock.mockResolvedValue(response([ticket()]));
 
     renderPage(false);
 
     await screen.findByText("Reset VPN");
-    expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+    await user.click(screen.getByTestId("ticket-actions-Reset VPN"));
+    expect(await screen.findByTestId("delete-action-Reset VPN")).toHaveAttribute("data-disabled");
+  });
+
+  it("shows delete action to admins for non-done tickets", async () => {
+    const user = userEvent.setup();
+    fetchTicketsMock.mockResolvedValue(response([ticket()]));
+
+    renderPage(true);
+
+    await screen.findByText("Reset VPN");
+    await user.click(screen.getByTestId("ticket-actions-Reset VPN"));
+    expect(await screen.findByTestId("delete-action-Reset VPN")).not.toHaveAttribute(
+      "data-disabled",
+    );
   });
 
   it("disables delete for done tickets", async () => {
+    const user = userEvent.setup();
     fetchTicketsMock.mockResolvedValue(response([ticket({ title: "Completed", status: "done" })]));
 
     renderPage(true);
 
-    expect(await screen.findByRole("button", { name: "Delete Completed" })).toBeDisabled();
+    await screen.findByText("Completed");
+    await user.click(screen.getByTestId("ticket-actions-Completed"));
+    expect(await screen.findByTestId("delete-action-Completed")).toHaveAttribute("data-disabled");
   });
 
   it("disables status changes for done tickets", async () => {
@@ -174,6 +216,6 @@ describe("TicketPage", () => {
 
     renderPage(true);
 
-    expect(await screen.findByLabelText("Status for Completed")).toBeDisabled();
+    expect(await screen.findByTestId("status-menu-Completed")).toBeDisabled();
   });
 });
